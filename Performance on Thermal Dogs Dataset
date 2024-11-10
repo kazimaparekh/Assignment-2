@@ -1,0 +1,100 @@
+import tensorflow as tf
+from tensorflow.keras import layers, models
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.applications import MobileNetV2
+from tensorflow.keras.optimizers import Adam
+
+# loading the Thermal Dogs dataset 
+
+train_dir = 'train'
+val_dir = 'valid'
+test_dir = 'test'
+
+# setting image size and batch size
+img_size = (224, 224)  # MobileNetV2 expects 224x224 images
+batch_size = 32
+
+# preparing image data generators for augmenting training data and loading data
+train_datagen = ImageDataGenerator(
+    rescale=1./255,  # Normalize images
+    rotation_range=40,
+    width_shift_range=0.2,
+    height_shift_range=0.2,
+    shear_range=0.2,
+    zoom_range=0.2,
+    horizontal_flip=True,
+    fill_mode='nearest'
+)
+
+val_test_datagen = ImageDataGenerator(rescale=1./255)
+
+train_generator = train_datagen.flow_from_directory(
+    train_dir,
+    target_size=img_size,
+    batch_size=batch_size,
+    class_mode='binary'  # Or 'categorical' for multi-class classification
+)
+
+val_generator = val_test_datagen.flow_from_directory(
+    val_dir,
+    target_size=img_size,
+    batch_size=batch_size,
+    class_mode='binary'  # Or 'categorical'
+)
+
+test_generator = val_test_datagen.flow_from_directory(
+    test_dir,
+    target_size=img_size,
+    batch_size=batch_size,
+    class_mode='binary'  # Or 'categorical'
+)
+
+# loading MobileNetV2 model with ImageNet pre-trained weights, without top 
+base_model = MobileNetV2(weights='imagenet', include_top=False, input_shape=(224, 224, 3))
+
+
+base_model.trainable = False
+
+# building the model by adding a custom head
+model = models.Sequential([
+    base_model,
+    layers.GlobalAveragePooling2D(),
+    layers.Dense(1, activation='sigmoid')  # Use 'softmax' for multi-class classification
+])
+
+# compile
+model.compile(optimizer=Adam(), loss='binary_crossentropy', metrics=['accuracy'])
+
+# training with a custom callback for timing the training epochs
+import time
+class TimingCallback(tf.keras.callbacks.Callback):
+    def on_epoch_begin(self, epoch, logs=None):
+        self.start_time = time.time()
+
+    def on_epoch_end(self, epoch, logs=None):
+        elapsed_time = time.time() - self.start_time
+        print(f"Epoch {epoch+1} took {elapsed_time:.2f} seconds.")
+
+# training the model
+history = model.fit(
+    train_generator,
+    epochs=10,
+    validation_data=val_generator,
+    callbacks=[TimingCallback()]
+)
+
+# evaluating on the test dataset
+test_loss, test_acc = model.evaluate(test_generator)
+print(f'Test Accuracy: {test_acc * 100:.2f}%')
+
+
+model.save('thermal_dogs_mobilenet.h5')
+
+
+# training time per epoch
+epoch_times = history.history.get('epoch_times', [])
+if epoch_times:
+    avg_epoch_time = sum(epoch_times) / len(epoch_times)
+    print(f'Average Epoch Time: {avg_epoch_time:.2f} seconds')
+
+
