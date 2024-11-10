@@ -6,20 +6,20 @@ from torch import nn, optim
 import torchvision.models as models
 
 
-# Define transformations for CIFAR-10 data
+# defining transformations for CIFAR-10 data
 transform = transforms.Compose([
     transforms.Resize((32, 32)),
     transforms.ToTensor(),
     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
 ])
 
-# Load CIFAR-10 dataset
+# loading CIFAR-10 dataset
 train_data = datasets.CIFAR10(root='./data', train=True, transform=transform, download=True)
 test_data = datasets.CIFAR10(root='./data', train=False, transform=transform, download=True)
 train_loader = DataLoader(train_data, batch_size=64, shuffle=True)
 test_loader = DataLoader(test_data, batch_size=64, shuffle=False)
 
-# Define models and training parameters
+# defining models and training parameters
 models_dict = {
     "Resnet-18" : models.resnet18(weights='IMAGENET1K_V1'),
    "Alexnet" : models.alexnet(weights='IMAGENET1K_V1'), 
@@ -30,11 +30,11 @@ num_epochs = 10  # Adjust for actual use
 results = []
 
 for model_name, model in models_dict.items():
-    model.fc = nn.Linear(model.fc.in_features, 10) if hasattr(model, 'fc') else nn.Linear(1280, 10)
+ model.fc = nn.Linear(model.fc.in_features, 10) if hasattr(model, 'fc') else nn.Linear(1280, 10)
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001)
 
-    # Training loop
+    # training loop
     start_time = time.time()
     for epoch in range(num_epochs):
         model.train()
@@ -51,9 +51,10 @@ for model_name, model in models_dict.items():
             correct += (predicted == labels).sum().item()
 
         train_accuracy = 100 * correct / total
-        training_time = (time.time() - start_time) / (epoch + 1) / 60  # Average time per epoch in minutes
+        training_time = (time.time() - start_time) / (epoch + 1) /60  
 
-    # Validation and Test Accuracy
+
+    # validation and Test Accuracy
     model.eval()
     with torch.no_grad():
         val_correct, val_total, test_correct, test_total = 0, 0, 0, 0
@@ -67,7 +68,7 @@ for model_name, model in models_dict.items():
         validation_accuracy = 100 * val_correct / val_total
         test_accuracy = 100 * test_correct / test_total
 
-    # Store results
+    # storing results
     results.append({
         "Model": model_name,
         "Training Accuracy": f"{train_accuracy:.2f}%",
@@ -76,9 +77,11 @@ for model_name, model in models_dict.items():
         "Training Time (per epoch)": f"{training_time:.2f} minutes"
     })
 
-# Display results in table format
+# displaying results in table format
 import pandas as pd
 df_results = pd.DataFrame(results)
 print(df_results)
+
+
 
 
